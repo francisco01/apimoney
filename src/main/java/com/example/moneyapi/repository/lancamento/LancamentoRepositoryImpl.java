@@ -16,9 +16,12 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.util.StringUtils;
 
+import com.example.moneyapi.model.Categoria_;
 import com.example.moneyapi.model.Lancamento;
 import com.example.moneyapi.model.Lancamento_;
+import com.example.moneyapi.model.Pessoa_;
 import com.example.moneyapi.repository.filter.LancamentoFilter;
+import com.example.moneyapi.repository.projection.ResumoLancamento;
 
 public class LancamentoRepositoryImpl implements LancamentoRepositoryQuery {
 
@@ -77,13 +80,33 @@ public class LancamentoRepositoryImpl implements LancamentoRepositoryQuery {
 		
 	}
 
-	private void adcionarRestricoesdePaginacao(Pageable pageable, TypedQuery<Lancamento> query) {
+	private void adcionarRestricoesdePaginacao(Pageable pageable, TypedQuery<?> query) {
 		int paginaAtual = pageable.getPageNumber();
 		int totalRegistrosPorPagina = pageable.getPageSize();
 		int primeiroRegistrodaPagina = paginaAtual * totalRegistrosPorPagina;
 		
 		query.setFirstResult(primeiroRegistrodaPagina);
 		query.setMaxResults(totalRegistrosPorPagina);
+	}
+
+	@Override
+	public Page<ResumoLancamento> resumir(LancamentoFilter lancamentoFilter, Pageable pageable) {
+		CriteriaBuilder builder = manager.getCriteriaBuilder();
+		CriteriaQuery<ResumoLancamento> criteria = builder.createQuery(ResumoLancamento.class);
+		Root<Lancamento> root = criteria.from(Lancamento.class);
+		
+		criteria.select(builder.construct(ResumoLancamento.class
+				, root.get(Lancamento_.CODIGO), root.get(Lancamento_.DATA_VENCIMENTO)
+				, root.get(Lancamento_.DATA_PAGAMENTO), root.get(Lancamento_.VALOR)
+				, root.get(Lancamento_.TIPO), root.get(Lancamento_.CATEGORIA).get(Categoria_.NOME)
+				, root.get(Lancamento_.PESSOA).get(Pessoa_.NOME)));
+		
+		Predicate[] predicates = (Predicate[]) criarRestricoes(lancamentoFilter, builder, root);
+		criteria.where(predicates);  
+		
+		TypedQuery<ResumoLancamento> query = manager.createQuery(criteria);
+		adcionarRestricoesdePaginacao(pageable, query);
+		return new PageImpl<ResumoLancamento>(query.getResultList(), pageable, total(lancamentoFilter)) ;
 	}
 
 }
