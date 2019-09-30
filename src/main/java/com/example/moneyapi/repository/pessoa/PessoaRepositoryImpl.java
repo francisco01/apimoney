@@ -14,11 +14,12 @@ import javax.persistence.criteria.Root;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.util.StringUtils;
 
 import com.example.moneyapi.model.Pessoa;
 import com.example.moneyapi.model.Pessoa_;
 import com.example.moneyapi.repository.filter.PessoaFilter;
-import org.springframework.util.StringUtils;
+import com.example.moneyapi.repository.projection.ResumoPessoa;
 
 public class PessoaRepositoryImpl implements PessoaRepositoryQuery{
 	
@@ -52,6 +53,48 @@ public class PessoaRepositoryImpl implements PessoaRepositoryQuery{
 		
 		return predicates.toArray(new Predicate[predicates.size()]);
 	}
+	
+	private void adcionarRestricoesdePaginacao(Pageable pageable, TypedQuery<?> query) {
+		int paginaAtual = pageable.getPageNumber();
+		int totalRegistrosPorPagina = pageable.getPageSize();
+		int primeiroRegistrodaPagina = paginaAtual * totalRegistrosPorPagina;
+		
+		query.setFirstResult(primeiroRegistrodaPagina);
+		query.setMaxResults(totalRegistrosPorPagina);
+	}
+	
+	private Long total(PessoaFilter pessoaFilter) {
+		CriteriaBuilder builder = manager.getCriteriaBuilder();
+		CriteriaQuery<Long> criteria = builder.createQuery(Long.class);
+		Root<Pessoa> root = criteria.from(Pessoa.class);
+		
+		Predicate[] predicates = criarRestricoes(pessoaFilter, builder, root);
+		criteria.where(predicates);
+		
+		criteria.select(builder.count(root));
+		
+		return manager.createQuery(criteria).getSingleResult();
+		
+	}
 
+	@Override
+	public Page<ResumoPessoa> resumir(PessoaFilter pessoaFilter, Pageable pageable) {
+		CriteriaBuilder builder = manager.getCriteriaBuilder();
+		CriteriaQuery<ResumoPessoa> criteria = builder.createQuery(ResumoPessoa.class);
+		Root<Pessoa> root = criteria.from(Pessoa.class);
+		
+		criteria.select(builder.construct(ResumoPessoa.class
+				, root.get(Pessoa_.CODIGO) 
+				,root.get(Pessoa_.NOME)
+				,root.get(Pessoa_.ENDERECO)
+				, root.get(Pessoa_.ATIVO)));
+		Predicate[] predicates = (Predicate[]) criarRestricoes(pessoaFilter, builder, root);
+		criteria.where(predicates);  
+		
+		TypedQuery<ResumoPessoa> query = manager.createQuery(criteria);
+		adcionarRestricoesdePaginacao(pageable, query);
+		return new PageImpl<ResumoPessoa>(query.getResultList(), pageable, total(pessoaFilter)) ;
+	}
+	
 	
 }

@@ -6,7 +6,7 @@ import com.example.moneyapi.model.TipoLancamento;
 
 public class ResumoLancamento {
 
-private Long codigo;
+	private Long codigo;
 	
 	private String descricao;
 	

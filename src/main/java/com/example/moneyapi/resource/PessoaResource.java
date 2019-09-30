@@ -1,7 +1,5 @@
 package com.example.moneyapi.resource;
 
-import java.util.List;
-
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 
@@ -26,6 +24,7 @@ import com.example.moneyapi.event.RecursoCriadoEvent;
 import com.example.moneyapi.model.Pessoa;
 import com.example.moneyapi.repository.PessoaRepository;
 import com.example.moneyapi.repository.filter.PessoaFilter;
+import com.example.moneyapi.repository.projection.ResumoPessoa;
 import com.example.moneyapi.service.PessoaService;
 
 @RestController
@@ -41,10 +40,16 @@ public class PessoaResource {
 	@Autowired
 	private ApplicationEventPublisher publisher;
 
-	 @PreAuthorize("hasAuthority('ROLE_PESQUISAR_PESSOA') and #oauth2.hasScope('read')")
+	@PreAuthorize("hasAuthority('ROLE_PESQUISAR_PESSOA') and #oauth2.hasScope('read')")
 	@GetMapping
 	public Page<Pessoa> listar(PessoaFilter pessoaFilter, Pageable pageable) {
 		return pessoaRepository.filtrar(pessoaFilter, pageable);
+	}
+	
+	@PreAuthorize("hasAuthority('ROLE_PESQUISAR_PESSOA') and #oauth2.hasScope('read')")
+	@GetMapping(params = "resumo")
+	public Page<ResumoPessoa> resumir(PessoaFilter pessoaFilter, Pageable pageable) {
+		return pessoaRepository.resumir(pessoaFilter, pageable);
 	}
 
 	@PreAuthorize("hasAuthority('ROLE_CADASTRAR_PESSOA') and #oauth2.hasScope('write')")
